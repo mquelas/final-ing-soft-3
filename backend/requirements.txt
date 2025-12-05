@@ -16,3 +16,4 @@ httpx
 authlib
 itsdangerous
 pytest
+email-validator
