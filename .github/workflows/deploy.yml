@@ -153,6 +153,7 @@ jobs:
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL_QA }}
       QA_BASE_URL: ${{ secrets.QA_API_URL }}
+      GOOGLE_CREDS_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
     steps:
       - uses: actions/checkout@v4
 
@@ -166,7 +167,7 @@ jobs:
         run: pip install -r backend/requirements.txt
 
       - name: Prepare Google credentials
-        if: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON != '' }}
+        if: ${{ env.GOOGLE_CREDS_JSON != '' }}
         env:
           CREDS_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
         run: |
