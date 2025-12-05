@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-
+import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { AdminPoloComponent } from './admin-polo.component';
 
 describe('AdminPoloComponent', () => {
@@ -8,7 +8,7 @@ describe('AdminPoloComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [AdminPoloComponent]
+      imports: [AdminPoloComponent, HttpClientTestingModule]
     })
     .compileComponents();
 
