@@ -26,7 +26,7 @@ pytest.ini    # Configuración global de pytest
 |-----------|---------------|----------------|
 | App completa en GitHub con frontend, backend y BD | ✅ Repositorio FastAPI + Angular funcionando con PostgreSQL | Documentar cómo levantarlo localmente y preparar ambiente QA |
 | ≥40 tests unitarios + integración | ✅ 73 unit tests backend, 2 de integración (GCloud Speech + metadata DB). Frontend con specs básicos | Añadir specs significativos al frontend y detallar reportes |
-| Build & deploy automatizados (Google Cloud Run + GitHub Actions) | ❌ Falta pipeline  | Crear workflows GitHub Actions descritos abajo |
+| Build & deploy automatizados (Google Cloud Run + GitHub Actions) | ❌ Falta pipeline  . | Crear workflows GitHub Actions descritos abajo |
 | Ejecución de tests y reportes en cada PR | ❌ | Job `lint-test` (frontend/backend) + artefactos |
 | Deploy automático a QA + pruebas de integración | ❌ | Cloud Run (backend y frontend) tras los unit tests |
 | Aprobación manual antes de producción | ❌ | GitHub Actions environments con `manual approval` |
