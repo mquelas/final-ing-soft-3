@@ -47,7 +47,7 @@ Backend principales:
 - `GOOGLE_API_KEY`, `GEMINI_MODEL`, `GOOGLE_APPLICATION_CREDENTIALS`
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`
 
-Frontend:
+Frontend
 
 - `environment.ts` define `apiUrl`. En CI/CD se sobreescribirá con `API_URL` antes de compilar.
 
