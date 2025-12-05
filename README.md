@@ -3,12 +3,14 @@
 Aplicación integral (Angular + FastAPI + PostgreSQL) para operar el tótem interactivo del Parque Industrial Polo 52. El sistema ofrece login JWT y Google OAuth, paneles separados para administradores del polo y de empresas, chatbot con voz (Gemini + Google Speech) y workflows de recuperación/rotación de contraseñas.
 
 ## Arquitectura
+
 - **Frontend**: Angular 19, componentes standalone, interceptores para adjuntar tokens, servicios especializados para panel público, admin polo, admin empresa, chat y flujos de password reset.
 - **Backend**: FastAPI, SQLAlchemy ORM y modelos normalizados (empresa, usuario, roles, servicios). Los módulos `routes/`, `schemas/` y `services.py` encapsulan login JWT, recuperación por email, cache de tokens usados y chatbot de voz.
 - **Base de datos**: PostgreSQL. SQLAlchemy gestiona relaciones, cascadas y sesiones (`SessionLocal`).
 - **Testing**: Pytest con 15 módulos unitarios (≈70 tests) y 2 suites de integración (`backend/tests/integration`). El frontend conserva 6 specs de Angular (pieza a reforzar).
 
 ## Estructura del repositorio
+
 ```
 backend/
   app/        # Código FastAPI
@@ -22,20 +24,23 @@ pytest.ini    # Configuración global de pytest
 ```
 
 ## Cumplimiento de requisitos del integrador
-| Requisito | Estado actual | Próximos pasos |
-|-----------|---------------|----------------|
-| App completa en GitHub con frontend, backend y BD | ✅ Repositorio FastAPI + Angular funcionando con PostgreSQL | Documentar cómo levantarlo localmente y preparar ambiente QA |
-| ≥40 tests unitarios + integración | ✅ 73 unit tests backend, 2 de integración (GCloud Speech + metadata DB). Frontend con specs básicos | Añadir specs significativos al frontend y detallar reportes |
-| Build & deploy automatizados (Google Cloud Run + GitHub Actions) | ❌ Falta pipeline  | Crear workflows GitHub Actions descritos abajo |
-| Ejecución de tests y reportes en cada PR | ❌ | Job `lint-test` (frontend/backend) + artefactos |
-| Deploy automático a QA + pruebas de integración | ❌ | Cloud Run (backend y frontend) tras los unit tests |
-| Aprobación manual antes de producción | ❌ | GitHub Actions environments con `manual approval` |
-| Documentar Test Cases unitarios e integración | ⚠️ Parcial (solo `backend/docs/test-report.md`) | Completar `docs/tests.md` |
+
+| Requisito                                                        | Estado actual                                                                                        | Próximos pasos                                               |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | ------------------------- |
+| App completa en GitHub con frontend, backend y BD                | ✅ Repositorio FastAPI + Angular funcionando con PostgreSQL                                          | Documentar cómo levantarlo localmente y preparar ambiente QA |
+| ≥40 tests unitarios + integración                                | ✅ 73 unit tests backend, 2 de integración (GCloud Speech + metadata DB). Frontend con specs básicos | Añadir specs significativos al frontend y detallar reportes  |
+| Build & deploy automatizados (Google Cloud Run + GitHub Actions) | ❌ Falta pipeline                                                                                    | Crear workflows GitHub Actions descritos abajo               |
+| Ejecución de tests y reportes en cada PR                         | ❌                                                                                                   | Job `lint-test` (frontend/backend) + artefactos              |
+| Deploy automático a QA + pruebas de integración                  | ❌                                                                                                   | Cloud Run (backend y frontend) tras los unit tests           |
+| Aprobación manual antes de producción                            | ❌                                                                                                   | GitHub Actions environments con `manual approval`            |
+| Documentar Test Cases unitarios e integración                    | ⚠️ Parcial (solo `backend/docs/test-report.md`)                                                      |                                                              | Completar `docs/tests.md` |
 
 ## Variables de entorno
+
 Todos los servicios leen variables desde `.env`. Use `.env.example` (crear en este plan) para replicar localmente y rellenar secretos en GitHub Actions.
 
 Backend principales:
+
 - `DATABASE_URL` (`postgresql+psycopg2://user:pass@host:5432/db`)
 - `SECRET_KEY`, `SESSION_SECRET_KEY`, `ENVIRONMENT`
 - `EMAIL_USER`, `EMAIL_PASS`, `SMTP_SERVER`, `SMTP_PORT`
@@ -43,9 +48,11 @@ Backend principales:
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`
 
 Frontend:
+
 - `environment.ts` define `apiUrl`. En CI/CD se sobreescribirá con `API_URL` antes de compilar.
 
 ## Levantar localmente
+
 1. Clonar el repo y crear `.env` a partir de `.env.example`.
 2. Backend:
    ```bash
@@ -63,6 +70,7 @@ Frontend:
 4. Navegar a `http://localhost:4200` (frontend) y API en `http://localhost:8000/docs`.
 
 ### Con Docker / Docker Compose
+
 - Construir imágenes individuales:
   ```bash
   make build-backend
@@ -77,11 +85,13 @@ Frontend:
   Esto levanta `db` (Postgres) y `api` (FastAPI con Uvicorn). Recuerda actualizar `DATABASE_URL` si cambias credenciales.
 
 ## Estrategia de testing
+
 - **Backend unit**: `pytest -m "not integration"` (por defecto en CI). Incluye rutas de auth, admin, chat, servicios de voz, utilidades y validaciones.
 - **Backend integración**: `pytest -m integration` apunta a Google Cloud Speech y consultas reales a PostgreSQL. En CI se ejecutarán luego del deploy a QA usando `BASE_URL` expuesta como secret.
 - **Frontend**: Angular `ng test --code-coverage` (ya configurado). Se agregarán specs adicionales y posibles pruebas e2e (Playwright/Cypress) dentro del directorio `frontend/tests/`.
 
 ## Roadmap CI/CD
+
 1. **Dockerización**: crear Dockerfiles independientes. El backend se empacará como imagen Python (Uvicorn). El frontend se buildará y servirá con NGINX dentro de un contenedor estático.
 2. **GitHub Actions**:
    - `ci.yml`: en PR y push. Jobs de Node/Python con caches, reportes JUnit/coverage como artefactos.
@@ -92,7 +102,9 @@ Frontend:
    - Frontend: Google Cloud Run (`totem-web-qa` y `totem-web-prod`) usando la imagen NGINX generada.
 
 ## Documentación adicional
+
 El directorio `docs/` contendrá:
+
 1. `setup.md`: variables, dependencias, cómo cargar secretos (GitHub + GCP).
 2. `tests.md`: inventario de casos unitarios/integración y cómo interpretarlos.
 3. `pipelines.md`: detalle de los workflows, ambientes y manual approval.
