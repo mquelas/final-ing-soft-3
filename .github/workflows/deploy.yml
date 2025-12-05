@@ -10,10 +10,10 @@ permissions:
   id-token: write
 
 env:
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  REGION: ${{ secrets.GCP_REGION }}
-  GAR_LOCATION: us-central1
-  REPOSITORY: final-ing-3-repo
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  REGION: ${{ vars.GCP_REGION }}
+  GAR_LOCATION: ${{ vars.GAR_LOCATION }}
+  REPOSITORY: ${{ vars.REPOSITORY }}
   BACKEND_SERVICE_QA: final-ing-3-api-qa-quelas-rivero
   BACKEND_SERVICE_PROD: final-ing-3-api-prod-quelas-rivero
   FRONTEND_SERVICE_QA: final-ing-3-web-qa-quelas-rivero
@@ -28,9 +28,9 @@ jobs:
     needs: tests
     runs-on: ubuntu-latest
     env:
-      PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-      REGION: ${{ secrets.GCP_REGION }}
-      REGISTRY_HOST: ${{ secrets.GCP_REGION }}-docker.pkg.dev
+      PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      REGION: ${{ vars.GCP_REGION }}
+      REGISTRY_HOST: ${{ vars.GCP_REGION }}-docker.pkg.dev
     outputs:
       image: ${{ steps.publish.outputs.image }}
     steps:
@@ -42,7 +42,7 @@ jobs:
 
       - uses: google-github-actions/setup-gcloud@v2
         with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          project_id: ${{ vars.GCP_PROJECT_ID }}
 
       - name: Configure Docker auth
         run: gcloud auth configure-docker $REGISTRY_HOST
@@ -66,9 +66,9 @@ jobs:
     needs: tests
     runs-on: ubuntu-latest
     env:
-      PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-      REGION: ${{ secrets.GCP_REGION }}
-      REGISTRY_HOST: ${{ secrets.GCP_REGION }}-docker.pkg.dev
+      PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      REGION: ${{ vars.GCP_REGION }}
+      REGISTRY_HOST: ${{ vars.GCP_REGION }}-docker.pkg.dev
       API_URL: ${{ secrets.QA_API_URL }}
     outputs:
       image: ${{ steps.publish.outputs.image }}
@@ -81,7 +81,7 @@ jobs:
 
       - uses: google-github-actions/setup-gcloud@v2
         with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          project_id: ${{ vars.GCP_PROJECT_ID }}
 
       - name: Configure Docker auth
         run: gcloud auth configure-docker $REGISTRY_HOST
@@ -113,7 +113,7 @@ jobs:
         with:
           service: ${{ env.BACKEND_SERVICE_QA }}
           image: ${{ needs.build-backend.outputs.image }}
-          region: ${{ secrets.GCP_REGION }}
+          region: ${{ vars.GCP_REGION }}
           env_vars: |
             DATABASE_URL=${{ secrets.DATABASE_URL_QA }}
             SECRET_KEY=${{ secrets.SECRET_KEY }}
@@ -143,7 +143,7 @@ jobs:
         with:
           service: ${{ env.FRONTEND_SERVICE_QA }}
           image: ${{ needs.build-frontend-qa.outputs.image }}
-          region: ${{ secrets.GCP_REGION }}
+          region: ${{ vars.GCP_REGION }}
           env_vars: |
             PORT=8080
           flags: --allow-unauthenticated
@@ -236,9 +236,9 @@ jobs:
     needs: approval-prod
     runs-on: ubuntu-latest
     env:
-      PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-      REGION: ${{ secrets.GCP_REGION }}
-      REGISTRY_HOST: ${{ secrets.GCP_REGION }}-docker.pkg.dev
+      PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      REGION: ${{ vars.GCP_REGION }}
+      REGISTRY_HOST: ${{ vars.GCP_REGION }}-docker.pkg.dev
       API_URL: ${{ secrets.PROD_API_URL }}
     outputs:
       image: ${{ steps.publish.outputs.image }}
@@ -251,7 +251,7 @@ jobs:
 
       - uses: google-github-actions/setup-gcloud@v2
         with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          project_id: ${{ vars.GCP_PROJECT_ID }}
 
       - name: Configure Docker auth
         run: gcloud auth configure-docker $REGISTRY_HOST
@@ -282,7 +282,7 @@ jobs:
         with:
           service: ${{ env.FRONTEND_SERVICE_PROD }}
           image: ${{ needs.build-frontend-prod.outputs.image }}
-          region: ${{ secrets.GCP_REGION }}
+          region: ${{ vars.GCP_REGION }}
           env_vars: |
             PORT=8080
           flags: --allow-unauthenticated
