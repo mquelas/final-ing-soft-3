@@ -49,7 +49,8 @@ jobs:
 
       - id: vars
         run: |
-          echo "image=${REGISTRY_HOST}/${PROJECT_ID}/${REPOSITORY}/backend:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+          IMAGE="${REGISTRY_HOST}/${PROJECT_ID}/${REPOSITORY}/backend:${GITHUB_SHA}"
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
 
       - name: Build backend image
         run: docker build -f backend/Dockerfile -t ${{ steps.vars.outputs.image }} .
@@ -87,7 +88,8 @@ jobs:
 
       - id: vars
         run: |
-          echo "image=${REGISTRY_HOST}/${PROJECT_ID}/${REPOSITORY}/frontend-qa:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+          IMAGE="${REGISTRY_HOST}/${PROJECT_ID}/${REPOSITORY}/frontend-qa:${GITHUB_SHA}"
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
 
       - name: Build frontend image
         run: docker build -f frontend/Dockerfile --build-arg API_URL="${API_URL}" -t ${{ steps.vars.outputs.image }} .
