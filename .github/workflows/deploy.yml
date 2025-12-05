@@ -144,8 +144,6 @@ jobs:
           service: ${{ env.FRONTEND_SERVICE_QA }}
           image: ${{ needs.build-frontend-qa.outputs.image }}
           region: ${{ vars.GCP_REGION }}
-          env_vars: |
-            PORT=8080
           flags: --allow-unauthenticated
 
   integration-tests:
@@ -283,6 +281,4 @@ jobs:
           service: ${{ env.FRONTEND_SERVICE_PROD }}
           image: ${{ needs.build-frontend-prod.outputs.image }}
           region: ${{ vars.GCP_REGION }}
-          env_vars: |
-            PORT=8080
           flags: --allow-unauthenticated
