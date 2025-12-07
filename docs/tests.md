@@ -40,6 +40,11 @@ Hay 6 specs generadas por Angular (`*.spec.ts`) que actualmente solo validan la 
 2. Crear pruebas de interacción (por ejemplo, `admin-polo` interactuando con formularios) usando `ComponentFixture` + eventos.
 3. Incorporar una suite E2E ligera (Playwright o Cypress) en `frontend/tests/` para validar flujos críticos: login, dashboard admin, chatbot.
 
+**Nuevos unit tests agregados**
+- `auth/auth.service.spec.ts`: login exitoso/errÇüneo, limpieza de token expirado y logout sin token.
+- `chat/chat.service.spec.ts`: peticiones a `/api/voice/chat` y `/api/voice/synthesize-base64` con payload/FormData correctos.
+- `shared/password-reset/password-reset.component.spec.ts`: validaciones de contraseÇña, manejo de estados de token (used/expired/reused) y flujo de reset exitoso con navegaciÇün.
+
 ### Comandos
 - Unitarios Angular: `cd frontend && npm run test -- --watch=false --code-coverage`
 - E2E (cuando exista): `cd frontend && npx playwright test` (o comando equivalente).

@@ -1786,9 +1786,12 @@ export class EmpresaMeComponent implements OnInit {
 
   // usado por el HTML y por el getter desdeIngreso
   formatMonthYear(dateStr?: string): string {
-    if (!dateStr) return '—';
+    if (!dateStr) return '-';
     try {
       const d = new Date(dateStr);
+      if (Number.isNaN(d.getTime())) {
+        return '-';
+      }
       return new Intl.DateTimeFormat('es-AR', {
         month: 'long',
         year: 'numeric',
