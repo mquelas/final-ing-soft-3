@@ -118,7 +118,7 @@ Cada etapa publica artefactos (reportes, coverage, screenshots) para la defensa.
 
 El directorio `docs/` contendrá:
 
-1. `setup.md`: variables, dependencias, cómo cargar secretos (GitHub + GCP).
+1. `setup.md`: variables, dependencias, cómo cargar secretos (GitHub  +  GCP).
 2. `tests.md`: inventario de casos unitarios/integración y cómo interpretarlos.
 3. `pipelines.md`: detalle de los workflows, ambientes y manual approval.
 4. `validation.md`: guías para los escenarios de validación que pedirá el profesor (cambios en código/test y cómo afectan el pipeline).
