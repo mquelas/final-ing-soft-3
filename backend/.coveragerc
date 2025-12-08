@@ -1,0 +1,15 @@
+[run]
+branch = True
+source = app
+omit =
+    app/__init__.py
+    app/config.py
+
+[report]
+show_missing = True
+skip_covered = True
+fail_under = 70
+precision = 2
+
+[xml]
+output = coverage.xml

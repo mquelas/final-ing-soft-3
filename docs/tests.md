@@ -54,6 +54,16 @@ Hay 6 specs generadas por Angular (`*.spec.ts`) que actualmente solo validan la 
 - `docs/tests.md` se actualizará para listar nuevos módulos o escenarios especiales (por ejemplo, pruebas de fallos solicitadas por el profesor).
 - Documentar en cada PR qué pruebas se añadieron o tocaron.
 
+### Cobertura de código
+- Pytest se ejecuta con `pytest --cov=app` y genera `backend/coverage.xml`. El archivo está gobernado por `backend/.coveragerc`, que exige `fail_under = 70` y muestra las líneas faltantes. El pipeline sube este reporte como artefacto (`backend-coverage`).
+- Angular Karma genera `frontend/coverage/lcov.info`. Este archivo también se publica como artefacto (`frontend-coverage`) y sirve para SonarCloud.
+- Para revisar localmente:
+  ```bash
+  cd backend && coverage html  # abre backend/htmlcov/index.html
+  cd frontend && npm run test -- --watch=false --code-coverage && npx http-server coverage
+  ```
+- Los módulos con menor cobertura (según los últimos reportes) son los servicios de administración (`admin_polo`, `admin_empresa`) y componentes de login. Se añadieron tareas en el backlog para cubrir estos flujos con Cypress/end-to-end.
+
 ## Próximos pasos de testing
 1. Reforzar specs de Angular para cubrir servicios `auth.service.ts`, `chat.service.ts` y componentes de formularios.
 2. Añadir pruebas de integración HTTP que apunten al Cloud Run de QA (`/health`, `/api/voice/status`, `/auth/login`).
