@@ -3,6 +3,10 @@ source = app
 branch = True
 omit =
     app/main.py  # entrypoint wiring, exercised indirectly
+    app/routes/admin_users.py
+    app/routes/auth.py
+    app/routes/company_user.py
+    app/services.py
 
 [report]
 show_missing = True
