@@ -208,15 +208,15 @@ jobs:
               echo "Backend health check passed with HTTP 200."
               exit 0
             fi
-          echo "Attempt ${attempt}: received HTTP ${STATUS}"
-          if [ -f /tmp/health_body ]; then
-            echo "Response body:"
-            cat /tmp/health_body
-          fi
-          sleep 5
-        done
-        echo "Backend QA health endpoint did not respond successfully after multiple attempts." >&2
-        exit 1
+            echo "Attempt ${attempt}: received HTTP ${STATUS}"
+            if [ -f /tmp/health_body ]; then
+              echo "Response body:"
+              cat /tmp/health_body
+            fi
+            sleep 5
+          done
+          echo "Backend QA health endpoint did not respond successfully after multiple attempts." >&2
+          exit 1
 
   e2e-qa:
     name: E2E Cypress QA
