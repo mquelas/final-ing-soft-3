@@ -1,7 +1,7 @@
 /// <reference types="cypress" />
 
 describe('Flujos integrados de Polo 52', () => {
-  const api = 'http://localhost:8000';
+  const api = Cypress.env('API_URL') || 'http://localhost:8000';
   const empresa = {
     cuil: 99123456789,
     nombre: 'Empresa Cypress',

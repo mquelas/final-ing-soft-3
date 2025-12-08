@@ -269,6 +269,7 @@ jobs:
         shell: bash
     env:
       CYPRESS_BASE_URL: ${{ needs.deploy-frontend-qa.outputs.frontend_url }}
+      CYPRESS_API_URL: ${{ secrets.QA_API_URL }}
     steps:
       - uses: actions/checkout@v4
 
