@@ -25,7 +25,7 @@ jobs:
     secrets: inherit
 
   sonar-quality-gate:
-    name: SonarCloud Quality Gate (post-tests)
+    name: SonarCloud Quality Gate
     needs:
       - tests
     runs-on: ubuntu-latest
@@ -252,7 +252,7 @@ jobs:
           exit 1
 
   qa-smoke-tests:
-    name: QA Smoke Tests (post-deploy)
+    name: QA Smoke Tests
     needs:
       - deploy-backend-qa
       - deploy-frontend-qa
@@ -301,8 +301,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
@@ -312,7 +312,7 @@ jobs:
         run: npx cypress run --browser chrome --config baseUrl="$CYPRESS_BASE_URL"
 
   integration-tests:
-    name: Integration Tests (post-QA)
+    name: Integration Tests
     needs:
       - qa-smoke-tests
     runs-on: ubuntu-latest
@@ -325,8 +325,8 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: 'pip'
+          python-version: "3.11"
+          cache: "pip"
           cache-dependency-path: backend/requirements.txt
 
       - name: Install dependencies
