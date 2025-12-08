@@ -181,9 +181,7 @@ jobs:
 
       - name: Run integration tests
         working-directory: backend
-        env:
-          PYTEST_ADDOPTS: ""
-        run: pytest -m integration --junitxml=pytest-integration.xml
+        run: pytest -m integration --no-cov --junitxml=pytest-integration.xml
 
       - name: Upload integration report
         if: success() || failure()
