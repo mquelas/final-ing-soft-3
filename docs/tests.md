@@ -35,19 +35,30 @@ Actualmente hay 15 módulos unitarios bajo `backend/tests/` y 2 suites marcadas 
 Los reportes en CI se exportarán en formato JUnit (`pytest --junitxml=report.xml`).
 
 ## Frontend (Angular)
-Hay 6 specs generadas por Angular (`*.spec.ts`) que actualmente solo validan la creación del componente. El plan es:
-1. Añadir pruebas de lógica (servicios, pipes) usando `TestBed` y `HttpClientTestingModule`.
-2. Crear pruebas de interacción (por ejemplo, `admin-polo` interactuando con formularios) usando `ComponentFixture` + eventos.
-3. Incorporar una suite E2E ligera (Playwright o Cypress) en `frontend/tests/` para validar flujos críticos: login, dashboard admin, chatbot.
+Suite actual y planes de mejora:
 
-**Nuevos unit tests agregados**
-- `auth/auth.service.spec.ts`: login exitoso/errÇüneo, limpieza de token expirado y logout sin token.
-- `chat/chat.service.spec.ts`: peticiones a `/api/voice/chat` y `/api/voice/synthesize-base64` con payload/FormData correctos.
-- `shared/password-reset/password-reset.component.spec.ts`: validaciones de contraseÇña, manejo de estados de token (used/expired/reused) y flujo de reset exitoso con navegaciÇün.
+| Archivo | Tipo | Cobertura principal |
+|---------|------|--------------------|
+| `app/app.component.spec.ts` | Unit | Render básico y título |
+| `auth/services/auth.service.spec.ts` | Unit | `login`, `logout`, expiración de tokens (mock de `HttpClient` y `localStorage`) |
+| `auth/components/logout-button/logout-button.component.spec.ts` | Unit | Botón logout con `AuthenticationService` mockeado |
+| `chat/services/chat.service.spec.ts` | Unit | Llamadas a `/api/voice/chat` y `/api/voice/synthesize-base64` usando `HttpTestingController` |
+| `reset-password/password-reset.component.spec.ts` | Unit | Validaciones de formulario y flujo completo de reset |
+| `app/interceptors/auth.interceptor.spec.ts` | Unit | Inyección de header `Authorization` y manejo de 401 |
+| `cypress/e2e/crud.cy.ts` | E2E | Flujos integrados (registro público, listado de servicios, manejo de login inválido) |
 
-### Comandos
-- Unitarios Angular: `cd frontend && npm run test -- --watch=false --code-coverage`
-- E2E (cuando exista): `cd frontend && npx playwright test` (o comando equivalente).
+- **Mocks**: se usa `HttpClientTestingModule`, `provideHttpClientTesting`, `RouterTestingModule` y un mock de `localStorage` para desacoplar servicios reales.
+- **Comando**: `cd frontend && npm run test -- --watch=false --code-coverage`.
+- **Necesidades**: sumar specs para componentes de admin (formularios) y pipes personalizados.
+
+### E2E (Cypress)
+- Archivo `frontend/cypress/e2e/crud.cy.ts`.
+- Flujos cubiertos:
+  1. Registro de usuario público (tolerando 200/400/500 según respuesta).
+  2. Listado de tipos de servicio (`/tipos/servicio`).
+  3. Login inválido devuelve 401 con mensaje.
+- Comando local/CI: `npm run e2e:ci` (inicia Angular con `start-server-and-test` y ejecuta `cypress run --browser chrome`).
+- Artefactos: screenshots automáticos en `frontend/cypress/screenshots`.
 
 ## Reportes y trazabilidad
 - GitHub Actions guardará los artefactos `backend-unit-tests.xml`, `backend-integration-tests.xml`, `frontend-unit-tests.xml` y los reportes de cobertura.

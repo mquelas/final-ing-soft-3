@@ -23,17 +23,17 @@ docs/         # Documentación operativa del proyecto (se llena en este plan)
 pytest.ini    # Configuración global de pytest
 ```
 
-## Cumplimiento de requisitos del integrador
+## Despliegues en la nube
 
-| Requisito                                                        | Estado actual                                                                                        | Próximos pasos                                               |
-| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| App completa en GitHub con frontend, backend y BD                | ✅ Repositorio FastAPI + Angular funcionando con PostgreSQL                                          | Documentar cómo levantarlo localmente y preparar ambiente QA |
-| ≥40 tests unitarios + integración                                | ✅ 73 unit tests backend, 2 de integración (GCloud Speech + metadata DB). Frontend con specs básicos | Añadir specs significativos al frontend y detallar reportes  |
-| Build & deploy automatizados (Google Cloud Run + GitHub Actions) | ❌ Falta pipeline                                                                                    | Crear workflows GitHub Actions descritos abajo               |
-| Ejecución de tests y reportes en cada PR                         | ❌                                                                                                   | Job `lint-test` (frontend/backend) + artefactos              |
-| Deploy automático a QA + pruebas de integración                  | ❌                                                                                                   | Cloud Run (backend y frontend) tras los unit tests           |
-| Aprobación manual antes de producción                            | ❌                                                                                                   | GitHub Actions environments con `manual approval`            |
-| Documentar Test Cases unitarios e integración                    | ⚠️ Parcial (solo `backend/docs/test-report.md`)                                                      | Completar `docs/tests.md`                                    |
+| Ambiente | Backend | Frontend | Configuración |
+| -------- | ------- | -------- | ------------- |
+| QA | `https://final-ing-3-api-qa-quelas-rivero-…run.app` | `https://final-ing-3-web-qa-quelas-rivero-…run.app` | 1 vCPU / 512 MiB, instancias mínimas 0, variables `*_QA`. Pipeline ejecuta health check + `pytest -m integration` tras cada deploy. |
+| PROD | `https://final-ing-3-api-prod-quelas-rivero-…run.app` | `https://final-ing-3-web-prod-quelas-rivero-…run.app` | 1 vCPU / 1 GiB, min instances 1, secretos `*_PROD`. Promoción solo tras aprobación manual (`environment: production`). |
+
+- **Registry**: Artifact Registry `final-ing-3-repo` (us-central1). Las imágenes se taggean con el `GITHUB_SHA`.
+- **Rollback**: Cloud Run permite enrutar tráfico a revisiones previas (`gcloud run services update-traffic …`).
+
+Más detalles en `docs/decisiones.md`.
 
 ## Variables de entorno
 
@@ -86,20 +86,33 @@ Frontend:
 
 ## Estrategia de testing
 
-- **Backend unit**: `pytest -m "not integration"` (por defecto en CI). Incluye rutas de auth, admin, chat, servicios de voz, utilidades y validaciones.
-- **Backend integración**: `pytest -m integration` apunta a Google Cloud Speech y consultas reales a PostgreSQL. En CI se ejecutarán luego del deploy a QA usando `BASE_URL` expuesta como secret.
-- **Frontend**: Angular `ng test --code-coverage` (ya configurado). Se agregarán specs adicionales y posibles pruebas e2e (Playwright/Cypress) dentro del directorio `frontend/tests/`.
+| Tipo | Herramienta | Detalle |
+| ---- | ----------- | ------- |
+| Unitarias backend | Pytest + Sqlite in-memory | Ejecuta `pytest -m "not integration"` con `--cov=app --cov-fail-under=70`. Reporte `backend/coverage.xml`. |
+| Integración backend | Pytest (`-m integration`) | Corre contra Cloud Run QA tras el deploy. Artefacto `pytest-integration.xml`. |
+| Unitarias frontend | Angular CLI / Karma | `npm run test -- --watch=false --browsers=ChromeHeadless --code-coverage`. Sube carpeta `frontend/coverage`. |
+| Estático | SonarCloud | Job `sonarcloud` consume los reportes de coverage y valida bugs/vulnerabilidades. |
+| E2E | Cypress 15 | `npm run e2e:ci` sobre Docker Compose. Flujos: registro público, catálogo de tipos, login inválido. Screenshots almacenados en `frontend/cypress/screenshots`. |
 
-## Roadmap CI/CD
+Resultados y casos detallados en `docs/tests.md`.
 
-1. **Dockerización**: crear Dockerfiles independientes. El backend se empacará como imagen Python (Uvicorn). El frontend se buildará y servirá con NGINX dentro de un contenedor estático.
-2. **GitHub Actions**:
-   - `ci.yml`: en PR y push. Jobs de Node/Python con caches, reportes JUnit/coverage como artefactos.
-   - `deploy.yml`: tras merge en `main`, reutiliza tests, construye imágenes, sube a Artifact Registry y despliega QA (dos servicios Cloud Run: backend y frontend). Luego corre `pytest -m integration` contra QA.
-   - `production.yml` o job final con `environment: production` y aprobación manual para promover builds a PRO.
-3. **Cloud**:
-   - Backend: Google Cloud Run (`totem-api-qa` y `totem-api-prod`) usando Artifact Registry gcr repo `totem`.
-   - Frontend: Google Cloud Run (`totem-web-qa` y `totem-web-prod`) usando la imagen NGINX generada.
+## CI/CD
+
+- **`ci.yml`** (PR / push / `workflow_call`):
+  1. `frontend-tests`: Node 20 + `npm ci` + Karma con coverage.
+  2. `backend-tests`: Python 3.11 + `pytest -m "not integration"` (coverage ≥70).
+  3. `sonarcloud`: descarga artefactos de coverage y ejecuta análisis en el proyecto `mquelas_final-ing-soft-3`.
+  4. `e2e-tests`: levanta stack con `docker-compose.dev.yml`, inyecta `.env` efímero y ejecuta Cypress.
+- **`deploy.yml`** (push a `main`):
+  1. `tests`: reutiliza `ci.yml` (bloquea si algo falla).
+  2. `build-backend` / `build-frontend-qa`: construyen imágenes y las envían a Artifact Registry.
+  3. `deploy-backend-qa` / `deploy-frontend-qa`: Cloud Run QA con secretos QA.
+  4. `qa-healthcheck`: espera a que `${QA_API_URL}/health` responda 200.
+  5. `integration-tests`: `pytest -m integration --no-cov`.
+  6. `approval-prod`: gate manual (`environment: production`).
+  7. `deploy-backend-prod` / `deploy-frontend-prod`: Cloud Run PROD con secretos PROD.
+
+Cada etapa publica artefactos (reportes, coverage, screenshots) para la defensa. El pipeline completo se describe en `docs/pipelines.md` y las decisiones de infraestructura en `docs/decisiones.md`.
 
 ## Documentación adicional
 

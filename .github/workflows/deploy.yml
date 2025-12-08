@@ -149,11 +149,37 @@ jobs:
           region: ${{ vars.GCP_REGION }}
           flags: --allow-unauthenticated
 
-  integration-tests:
-    name: Integration Tests (post-QA)
+  qa-healthcheck:
+    name: QA Health Check
     needs:
       - deploy-backend-qa
       - deploy-frontend-qa
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for Backend QA health endpoint
+        env:
+          QA_API_URL: ${{ secrets.QA_API_URL }}
+        run: |
+          if [ -z "$QA_API_URL" ]; then
+            echo "QA_API_URL secret is not set. Please configure it with the Cloud Run URL." >&2
+            exit 1
+          fi
+          echo "Polling ${QA_API_URL}/health..."
+          for attempt in {1..20}; do
+            if curl -sf "${QA_API_URL}/health" > /dev/null; then
+              echo "Backend health check passed."
+              exit 0
+            fi
+            echo "Health check attempt ${attempt} failed. Retrying..."
+            sleep 5
+          done
+          echo "Backend QA health endpoint did not respond successfully in time." >&2
+          exit 1
+
+  integration-tests:
+    name: Integration Tests (post-QA)
+    needs:
+      - qa-healthcheck
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL_QA }}

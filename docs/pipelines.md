@@ -6,58 +6,56 @@ Este documento describe los workflows que se implementarán para cumplir con los
 **Disparadores**: `pull_request` hacia `main` y `push` a cualquier rama.
 
 **Jobs**
-1. `frontend-test`
-   - Configura Node 20, restaura cache (`npm` + `~/.npm`).
-   - Ejecuta `npm ci`, `npm run lint` (opcional) y `npm run test -- --watch=false --code-coverage`.
-   - Publica artefactos `frontend-unit-tests.xml` y carpeta `coverage/`.
-2. `backend-test`
-   - Configura Python 3.11, instala dependencias (`pip install -r requirements.txt`).
-   - Ejecuta `pytest -m "not integration" --junitxml=backend-unit-tests.xml`.
-   - Sube reportes como artefacto.
+1. `frontend-tests`
+   - Node 20 con cache de npm.
+   - `npm ci` + `npm run test -- --watch=false --browsers=ChromeHeadless --code-coverage`.
+   - Artefactos: `frontend-coverage/`.
+2. `backend-tests`
+   - Python 3.11 cacheado.
+   - `pytest -m "not integration" --junitxml=pytest-unit.xml --cov=app --cov-fail-under=70`.
+   - Artefactos: `backend-coverage.xml` y reporte JUnit.
+3. `sonarcloud`
+   - Descarga coverage (front/back) y ejecuta `SonarSource/sonarqube-scan-action@v5`.
+4. `e2e-tests`
+   - `docker compose -f docker-compose.dev.yml up db api` (backend FastAPI + Postgres).
+   - Genera `.env` temporal con secrets para CI.
+   - Ejecuta `npm run e2e:ci` (Cypress) y sube screenshots.
 
-**Resultado**: bloqueo obligatorio para merge; los reportes estarán disponibles para descargar.
+**Resultado**: si cualquiera falla, el PR queda en rojo y `deploy.yml` no se dispara.
 
 ## Workflow `deploy.yml`
 **Disparadores**: `push` a `main` o `workflow_dispatch`.
 
 **Jobs**
-1. `call-ci`
-   - Usa `workflow_call` para reutilizar el testing de `ci.yml`. Si falla, el pipeline termina.
+1. `tests`
+   - Invoca `ci.yml` vía `workflow_call`. Si falla, el pipeline termina.
 2. `build-backend`
-   - Construye la imagen Docker (`backend/Dockerfile`), etiqueta `us-central1-docker.pkg.dev/<project>/totem/api:$GITHUB_SHA`.
-   - Push a Artifact Registry usando `gcloud auth configure-docker` + secreto `GCP_SA_KEY`.
-   - Publica `image-digest` como output.
-3. `build-frontend`
-   - Instala Node, ejecuta `npm ci && API_URL=$QA_BASE_URL npm run build`.
-   - Construye la imagen NGINX (`frontend/Dockerfile`) que sirve `dist/frontend/browser`.
-   - Push al mismo Artifact Registry (`totem/web`).
+   - `docker build -f backend/Dockerfile` → `us-central1-docker.pkg.dev/final-ing-3/final-ing-3-repo/backend:${GITHUB_SHA}`.
+3. `build-frontend-qa`
+   - `docker build -f frontend/Dockerfile --build-arg API_URL=$QA_API_URL`.
 4. `deploy-backend-qa`
-   - Usa `google-github-actions/deploy-cloudrun@v2`.
-   - Variables: `service: totem-api-qa`, `region: $GCP_REGION`, `image: <digest>`.
-   - Inyecta `.env` QA mediante secretos `DATABASE_URL_QA`, `SECRET_KEY`, etc.
+   - `google-github-actions/deploy-cloudrun@v2` con `env_vars` (`DATABASE_URL_QA`, `SECRET_KEY`, etc.).
 5. `deploy-frontend-qa`
-   - Usa `google-github-actions/deploy-cloudrun@v2` con `service: totem-web-qa` y la imagen subida en el job previo.
-6. `integration-tests`
-   - Corre `pytest -m integration --base-url=$QA_BASE_URL` (y Playwright si aplica) apuntando al entorno recién desplegado.
-   - Publica reportes y marca `QA_URL` como evidencia.
-7. `approval-prod`
-   - Job vacío con `environment: production` y `needs: integration-tests`. Requiere aprobación manual desde la UI de GitHub Actions.
-8. `deploy-backend-prod`
-   - Igual que QA pero con servicio `totem-api-prod` y secretos de producción.
-9. `deploy-frontend-prod`
-   - Repite el proceso Cloud Run con `service: totem-web-prod` y `API_URL=$PROD_BASE_URL`.
-
-## Workflow `manual-validation.yml`
-Opcionalmente se añadirá un workflow disparado con `workflow_dispatch` para simular los escenarios del profesor:
-1. Job `break-unit-test`: modifica un archivo o ejecuta un script que falla un test; confirma que el pipeline se detenga antes de deploy.
-2. Job `small-code-change`: aplica un parche mínimo (p.ej., cambiar un string) y ejecuta `ci.yml` completo para mostrar reportes.
+   - Cloud Run `final-ing-3-web-qa-quelas-rivero`.
+6. `qa-healthcheck`
+   - Poll `${QA_API_URL}/health` hasta recibir 200 (máx 20 intentos).
+7. `integration-tests`
+   - `pytest -m integration --no-cov --junitxml=pytest-integration.xml` apuntando a QA.
+8. `approval-prod`
+   - `environment: production`, requiere aprobación en la UI.
+9. `deploy-backend-prod`
+   - Mismo proceso que QA pero con `DATABASE_URL_PROD`, `SECRET_KEY`, `SESSION_SECRET_KEY` PROD.
+10. `deploy-frontend-prod`
+    - Cloud Run `final-ing-3-web-prod-quelas-rivero` con `API_URL=$PROD_API_URL`.
 
 ## Artefactos y notificaciones
-- Todos los workflows publicarán archivos `.xml` y `coverage/` para revisión.
-- Se puede integrar Slack/Teams enviando notificación en `approval-prod` y `deploy-*` con `actions/checkout` + `slackapi/slack-github-action` (pendiente a confirmar con la cátedra).
+- `frontend-coverage`, `backend-coverage`, `pytest-unit.xml`, `pytest-integration.xml`, screenshots de Cypress.
+- Los logs de aprobación quedan en `Settings → Environments → production`.
 
 ## Estrategia de rollback
-- Cloud Run mantiene revisiones anteriores, por lo que se puede usar `gcloud run services update-traffic totem-api-prod --to-latest=false --revision <id>` si algo falla.
-- Cloud Run conserva revisiones previas, permitiendo reasignar tráfico a cualquier revisión anterior.
-
-Con estos workflows se cubre el requisito: cada PR corre tests y muestra reportes; el merge a `main` construye y despliega automáticamente a QA, ejecuta pruebas de integración y requiere aprobación manual antes de promover a producción.
+- Cloud Run conserva revisiones; para revertir:
+  ```
+  gcloud run services update-traffic final-ing-3-api-prod-quelas-rivero \
+    --region us-central1 --to-revisions REVISION-ID=100
+  ```
+- También puede revertirse via UI (`Revisions` → `Deploy revision`).
