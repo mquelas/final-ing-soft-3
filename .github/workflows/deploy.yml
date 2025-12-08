@@ -111,7 +111,8 @@ jobs:
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - uses: google-github-actions/deploy-cloudrun@v2
+      - id: deploy
+        uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: ${{ env.BACKEND_SERVICE_QA }}
           image: ${{ needs.build-backend.outputs.image }}
@@ -132,22 +133,58 @@ jobs:
             ENVIRONMENT=qa
           flags: --allow-unauthenticated
 
+      - name: Health check backend QA
+        env:
+          URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          for i in {1..5}; do
+            if curl -fsSL "$URL/health" || curl -fsSL "$URL"; then
+              echo "Backend QA healthy on attempt $i"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying in 5s..."
+            sleep 5
+          done
+          echo "Backend QA health check failed" >&2
+          exit 1
+
   deploy-frontend-qa:
     name: Deploy Frontend to QA
     needs:
       - build-frontend-qa
     runs-on: ubuntu-latest
+    outputs:
+      frontend_url: ${{ steps.publish-url.outputs.url }}
     steps:
       - uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - uses: google-github-actions/deploy-cloudrun@v2
+      - id: deploy
+        uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: ${{ env.FRONTEND_SERVICE_QA }}
           image: ${{ needs.build-frontend-qa.outputs.image }}
           region: ${{ vars.GCP_REGION }}
           flags: --allow-unauthenticated
+
+      - id: publish-url
+        run: echo "url=${{ steps.deploy.outputs.url }}" >> $GITHUB_OUTPUT
+
+      - name: Health check frontend QA
+        env:
+          URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          for i in {1..5}; do
+            if curl -fsSL "$URL"; then
+              echo "Frontend QA healthy on attempt $i"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying in 5s..."
+            sleep 5
+          done
+          echo "Frontend QA health check failed" >&2
+          exit 1
 
   qa-healthcheck:
     name: QA Health Check
@@ -171,15 +208,42 @@ jobs:
               echo "Backend health check passed with HTTP 200."
               exit 0
             fi
-            echo "Attempt ${attempt}: received HTTP ${STATUS}"
-            if [ -f /tmp/health_body ]; then
-              echo "Response body:"
-              cat /tmp/health_body
-            fi
-            sleep 5
-          done
-          echo "Backend QA health endpoint did not respond successfully after multiple attempts." >&2
-          exit 1
+          echo "Attempt ${attempt}: received HTTP ${STATUS}"
+          if [ -f /tmp/health_body ]; then
+            echo "Response body:"
+            cat /tmp/health_body
+          fi
+          sleep 5
+        done
+        echo "Backend QA health endpoint did not respond successfully after multiple attempts." >&2
+        exit 1
+
+  e2e-qa:
+    name: E2E Cypress QA
+    needs:
+      - qa-healthcheck
+      - deploy-frontend-qa
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+        shell: bash
+    env:
+      CYPRESS_BASE_URL: ${{ needs.deploy-frontend-qa.outputs.frontend_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Cypress E2E against QA
+        run: npx cypress run --browser chrome --config baseUrl="$CYPRESS_BASE_URL"
 
   integration-tests:
     name: Integration Tests (post-QA)
@@ -224,7 +288,9 @@ jobs:
 
   approval-prod:
     name: Approval for Production
-    needs: integration-tests
+    needs:
+      - integration-tests
+      - e2e-qa
     runs-on: ubuntu-latest
     environment:
       name: production
@@ -242,7 +308,8 @@ jobs:
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - uses: google-github-actions/deploy-cloudrun@v2
+      - id: deploy
+        uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: ${{ env.BACKEND_SERVICE_PROD }}
           image: ${{ needs.build-backend.outputs.image }}
@@ -262,6 +329,21 @@ jobs:
             GEMINI_MODEL=${{ secrets.GEMINI_MODEL }}
             ENVIRONMENT=production
           flags: --allow-unauthenticated
+
+      - name: Health check backend Prod
+        env:
+          URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          for i in {1..5}; do
+            if curl -fsSL "$URL/health" || curl -fsSL "$URL"; then
+              echo "Backend Prod healthy on attempt $i"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying in 5s..."
+            sleep 5
+          done
+          echo "Backend Prod health check failed" >&2
+          exit 1
 
   build-frontend-prod:
     name: Build Frontend Image (Prod)
@@ -310,9 +392,25 @@ jobs:
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - uses: google-github-actions/deploy-cloudrun@v2
+      - id: deploy
+        uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: ${{ env.FRONTEND_SERVICE_PROD }}
           image: ${{ needs.build-frontend-prod.outputs.image }}
           region: ${{ vars.GCP_REGION }}
           flags: --allow-unauthenticated
+
+      - name: Health check frontend Prod
+        env:
+          URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          for i in {1..5}; do
+            if curl -fsSL "$URL"; then
+              echo "Frontend Prod healthy on attempt $i"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying in 5s..."
+            sleep 5
+          done
+          echo "Frontend Prod health check failed" >&2
+          exit 1
