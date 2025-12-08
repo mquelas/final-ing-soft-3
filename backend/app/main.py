@@ -1,7 +1,7 @@
 # app/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.config import SessionLocal
+from app.config import SessionLocal, Base, engine
 from app.routes.auth import router as auth_router
 from app.routes.company_user import router as company_user_router
 from app.routes.admin_users import router as admin_users_router
@@ -125,6 +125,12 @@ async def startup_event():
     Evento que se ejecuta al iniciar la aplicación
     Muestra información de configuración
     """
+    # Asegura que las tablas existan cuando se levanta la API (útil en CI)
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception as exc:
+        print(f"⚠️ No se pudieron crear las tablas: {exc}")
+
     print("\n" + "="*70)
     print(" POLO 52 API - INICIANDO")
     print("="*70)
