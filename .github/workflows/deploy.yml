@@ -186,8 +186,8 @@ jobs:
           echo "Frontend QA health check failed" >&2
           exit 1
 
-  qa-healthcheck:
-    name: QA Health Check
+  qa-smoke-tests:
+    name: QA Smoke Tests (post-deploy)
     needs:
       - deploy-backend-qa
       - deploy-frontend-qa
@@ -218,10 +218,49 @@ jobs:
           echo "Backend QA health endpoint did not respond successfully after multiple attempts." >&2
           exit 1
 
+  sonar-quality-gate:
+    name: SonarCloud Quality Gate (post-QA)
+    needs:
+      - qa-smoke-tests
+      - tests
+    runs-on: ubuntu-latest
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: backend-unit-tests
+          path: backend
+
+      - name: SonarCloud Scan
+        if: ${{ env.SONAR_TOKEN != '' }}
+        uses: sonarsource/sonarcloud-github-action@v2
+        env:
+          SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
+        with:
+          args: >
+            -Dsonar.projectKey=mquelas_final-ing-soft-3
+            -Dsonar.organization=mquelas
+            -Dsonar.sources=backend/app,frontend/src
+            -Dsonar.tests=backend/tests,frontend/src
+            -Dsonar.exclusions=**/*.spec.ts,frontend/src/test.ts
+            -Dsonar.test.inclusions=frontend/src/**/*.spec.ts
+            -Dsonar.python.coverage.reportPaths=backend/coverage.xml
+            -Dsonar.javascript.lcov.reportPaths=frontend/coverage/lcov.info
+            -Dsonar.sourceEncoding=UTF-8
+
   e2e-qa:
     name: E2E Cypress QA
     needs:
-      - qa-healthcheck
+      - qa-smoke-tests
       - deploy-frontend-qa
     runs-on: ubuntu-latest
     defaults:
@@ -248,7 +287,7 @@ jobs:
   integration-tests:
     name: Integration Tests (post-QA)
     needs:
-      - qa-healthcheck
+      - qa-smoke-tests
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL_QA }}
