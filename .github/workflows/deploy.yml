@@ -63,7 +63,10 @@ jobs:
 
   build-frontend-qa:
     name: Build Frontend Image (QA)
-    needs: tests
+    needs:
+      - tests
+      - e2e-tests
+      - sonarcloud
     runs-on: ubuntu-latest
     env:
       PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
@@ -102,7 +105,11 @@ jobs:
 
   deploy-backend-qa:
     name: Deploy Backend to QA
-    needs: build-backend
+    needs:
+      - tests
+      - e2e-tests
+      - sonarcloud
+      - build-backend
     runs-on: ubuntu-latest
     steps:
       - uses: google-github-actions/auth@v2
@@ -132,7 +139,11 @@ jobs:
 
   deploy-frontend-qa:
     name: Deploy Frontend to QA
-    needs: build-frontend-qa
+    needs:
+      - tests
+      - e2e-tests
+      - sonarcloud
+      - build-frontend-qa
     runs-on: ubuntu-latest
     steps:
       - uses: google-github-actions/auth@v2
