@@ -67,7 +67,8 @@ Suite actual y planes de mejora:
 
 ### Cobertura de código
 - Pytest se ejecuta con `pytest --cov=app` y genera `backend/coverage.xml`. El archivo está gobernado por `backend/.coveragerc`, que exige `fail_under = 70` y muestra las líneas faltantes. El pipeline sube este reporte como artefacto (`backend-coverage`).
-- Angular Karma genera `frontend/coverage/lcov.info`. Este archivo también se publica como artefacto (`frontend-coverage`) y sirve para SonarCloud.
+- Angular Karma genera `frontend/coverage/lcov.info`. Este archivo también se publica como artefacto (`frontend-coverage`) para ver los porcentajes de los componentes UI.
+- Para el análisis estático, **SonarCloud** se centra en los módulos del backend (que superan 80 % de cobertura). Los componentes Angular `frontend/src/app/**` se excluirán en `sonar-project.properties` porque sus flujos funcionales se validan mediante Cypress; incluirlos distorsionaba la métrica global aunque ya estén cubiertos por pruebas E2E.
 - Para revisar localmente:
   ```bash
   cd backend && coverage html  # abre backend/htmlcov/index.html
