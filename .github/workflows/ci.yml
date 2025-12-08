@@ -85,7 +85,8 @@ jobs:
       - frontend-tests
       - backend-tests
     runs-on: ubuntu-latest
-    if: ${{ secrets.SONAR_TOKEN != '' }}
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -100,9 +101,10 @@ jobs:
           path: backend
 
       - name: SonarCloud Scan
+        if: ${{ env.SONAR_TOKEN != '' }}
         uses: sonarsource/sonarcloud-github-action@v2
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
           SONAR_HOST_URL: https://sonarcloud.io
         with:
           args: >
