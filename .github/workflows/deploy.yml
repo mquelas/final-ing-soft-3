@@ -165,15 +165,20 @@ jobs:
             exit 1
           fi
           echo "Polling ${QA_API_URL}/health..."
-          for attempt in {1..20}; do
-            if curl -sf "${QA_API_URL}/health" > /dev/null; then
-              echo "Backend health check passed."
+          for attempt in {1..30}; do
+            STATUS=$(curl -s -o /tmp/health_body -w "%{http_code}" "${QA_API_URL}/health" || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "Backend health check passed with HTTP 200."
               exit 0
             fi
-            echo "Health check attempt ${attempt} failed. Retrying..."
+            echo "Attempt ${attempt}: received HTTP ${STATUS}"
+            if [ -f /tmp/health_body ]; then
+              echo "Response body:"
+              cat /tmp/health_body
+            fi
             sleep 5
           done
-          echo "Backend QA health endpoint did not respond successfully in time." >&2
+          echo "Backend QA health endpoint did not respond successfully after multiple attempts." >&2
           exit 1
 
   integration-tests:
