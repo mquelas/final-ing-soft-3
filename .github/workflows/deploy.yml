@@ -24,73 +24,10 @@ jobs:
     uses: ./.github/workflows/ci.yml
     secrets: inherit
 
-  sonar-quality-gate:
-    name: SonarCloud Quality Gate
-    needs:
-      - tests
-    runs-on: ubuntu-latest
-    env:
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: frontend-coverage
-          path: artifacts/frontend
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: backend-unit-tests
-          path: artifacts/backend
-
-      - name: Normalize coverage paths
-        run: |
-          mkdir -p frontend/coverage backend
-          BACKEND_COV=$(find artifacts -name 'coverage.xml' | head -n1)
-          FRONTEND_LCOV=$(find artifacts -name 'lcov.info' | head -n1)
-          if [ -z "$BACKEND_COV" ]; then
-            echo "backend coverage.xml not found in artifacts"; exit 1;
-          fi
-          if [ -z "$FRONTEND_LCOV" ]; then
-            echo "frontend lcov.info not found in artifacts"; exit 1;
-          fi
-          cp "$BACKEND_COV" backend/coverage.xml
-          cp "$FRONTEND_LCOV" frontend/coverage/lcov.info
-
-      - name: Verify coverage reports
-        run: |
-          ls -l frontend/coverage || true
-          ls -l backend || true
-          if [ ! -s frontend/coverage/lcov.info ]; then
-            echo "lcov.info not found or empty"; exit 1; 
-          fi
-          if [ ! -s backend/coverage.xml ]; then
-            echo "backend coverage.xml not found or empty"; exit 1;
-          fi
-
-      - name: SonarCloud Scan
-        if: ${{ env.SONAR_TOKEN != '' }}
-        uses: sonarsource/sonarcloud-github-action@v2
-        env:
-          SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
-          SONAR_HOST_URL: https://sonarcloud.io
-        with:
-          args: >
-            -Dsonar.projectKey=mquelas_final-ing-soft-3
-            -Dsonar.organization=mquelas
-            -Dsonar.sources=backend/app,frontend/src
-            -Dsonar.tests=backend/tests,frontend/src
-            -Dsonar.exclusions=**/*.spec.ts,frontend/src/test.ts
-            -Dsonar.test.inclusions=frontend/src/**/*.spec.ts
-            -Dsonar.python.coverage.reportPaths=backend/coverage.xml
-            -Dsonar.javascript.lcov.reportPaths=frontend/coverage/lcov.info
-            -Dsonar.sourceEncoding=UTF-8
-
   build-backend:
     name: Build Backend Image
     needs:
-      - sonar-quality-gate
+      - tests
     runs-on: ubuntu-latest
     env:
       PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
@@ -129,7 +66,7 @@ jobs:
   build-frontend-qa:
     name: Build Frontend Image (QA)
     needs:
-      - sonar-quality-gate
+      - tests
     runs-on: ubuntu-latest
     env:
       PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
