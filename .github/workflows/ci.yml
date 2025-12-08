@@ -118,6 +118,36 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Prepare env for backend services
+        run: |
+          cat <<'EOF' > .env
+          DATABASE_URL=postgresql+psycopg2://${POSTGRES_USER:-polo52}:${POSTGRES_PASSWORD:-polo52}@db:5432/${POSTGRES_DB:-polo52}
+          SECRET_KEY=${SECRET_KEY:-ci-secret}
+          SESSION_SECRET_KEY=${SESSION_SECRET_KEY:-ci-session-secret}
+          EMAIL_USER=${EMAIL_USER:-qa@example.com}
+          EMAIL_PASS=${EMAIL_PASS:-qa-password}
+          SMTP_SERVER=${SMTP_SERVER:-smtp.gmail.com}
+          SMTP_PORT=${SMTP_PORT:-587}
+          GOOGLE_API_KEY=${GOOGLE_API_KEY:-fake-api-key}
+          GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-fake-client-id}
+          GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-fake-client-secret}
+          GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI:-http://localhost:8000/auth/google/callback}
+          GEMINI_MODEL=${GEMINI_MODEL:-models/gemini-2.0-flash}
+          ENVIRONMENT=ci
+          EOF
+        env:
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          SESSION_SECRET_KEY: ${{ secrets.SESSION_SECRET_KEY }}
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REDIRECT_URI: ${{ secrets.GOOGLE_REDIRECT_URI }}
+          GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
+
       - name: Start backend stack
         run: docker compose -f docker-compose.dev.yml up -d db api
 
