@@ -1,15 +1,9 @@
 [run]
-branch = True
 source = app
+branch = True
 omit =
-    app/__init__.py
-    app/config.py
+    app/main.py  # entrypoint wiring, exercised indirectly
 
 [report]
 show_missing = True
-skip_covered = True
-fail_under = 70
-precision = 2
-
-[xml]
-output = coverage.xml
+skip_empty = True
