@@ -239,6 +239,17 @@ jobs:
           name: backend-unit-tests
           path: backend
 
+      - name: Verify coverage reports
+        run: |
+          ls -l frontend/coverage || true
+          ls -l backend || true
+          if [ ! -s frontend/coverage/lcov.info ]; then
+            echo "lcov.info not found or empty"; exit 1; 
+          fi
+          if [ ! -s backend/coverage.xml ]; then
+            echo "backend coverage.xml not found or empty"; exit 1;
+          fi
+
       - name: SonarCloud Scan
         if: ${{ env.SONAR_TOKEN != '' }}
         uses: sonarsource/sonarcloud-github-action@v2
