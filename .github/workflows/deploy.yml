@@ -232,12 +232,26 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: frontend-coverage
-          path: .
+          path: artifacts/frontend
 
       - uses: actions/download-artifact@v4
         with:
           name: backend-unit-tests
-          path: .
+          path: artifacts/backend
+
+      - name: Normalize coverage paths
+        run: |
+          mkdir -p frontend/coverage backend
+          BACKEND_COV=$(find artifacts -name 'coverage.xml' | head -n1)
+          FRONTEND_LCOV=$(find artifacts -name 'lcov.info' | head -n1)
+          if [ -z "$BACKEND_COV" ]; then
+            echo "backend coverage.xml not found in artifacts"; exit 1;
+          fi
+          if [ -z "$FRONTEND_LCOV" ]; then
+            echo "frontend lcov.info not found in artifacts"; exit 1;
+          fi
+          cp "$BACKEND_COV" backend/coverage.xml
+          cp "$FRONTEND_LCOV" frontend/coverage/lcov.info
 
       - name: Verify coverage reports
         run: |
