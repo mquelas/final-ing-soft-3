@@ -104,6 +104,25 @@ describe('AuthenticationService', () => {
     expect(role).toBe('publico');
   });
 
+  it('getToken prioriza sessionStorage y retorna null si no hay tokens', () => {
+    sessionStorage.setItem('sessionToken', 'sess');
+    localStorage.setItem('access_token', 'google-token');
+    expect(service.getToken()).toBe('sess');
+
+    sessionStorage.clear();
+    localStorage.clear();
+    expect(service.getToken()).toBeNull();
+  });
+
+  it('getUserRole prioriza rol tradicional y retorna null si no hay roles', () => {
+    sessionStorage.setItem('rol', 'empresa');
+    expect(service.getUserRole()).toBe('empresa');
+
+    sessionStorage.clear();
+    localStorage.clear();
+    expect(service.getUserRole()).toBeNull();
+  });
+
   it('register devuelve true en Éxito y false en error', (done) => {
     service.register('john', 'john@mail', '123', '20-111').subscribe((ok) => {
       expect(ok).toBeTrue();
@@ -135,5 +154,197 @@ describe('AuthenticationService', () => {
       expect(sessionStorage.getItem('sessionToken')).toBeNull();
       done();
     });
+  });
+
+  it('logout con token realiza llamada y limpia sesión', (done) => {
+    localStorage.setItem('sessionToken', 'jwt');
+    const headersSpy = spyOn<any>(service as any, 'clearSession').and.callThrough();
+
+    service.logout().subscribe((result) => {
+      expect(result).toBeTrue();
+      expect(headersSpy).toHaveBeenCalled();
+      expect(routerNavigateSpy).toHaveBeenCalledWith(['/login']);
+      expect(localStorage.getItem('sessionToken')).toBeNull();
+      done();
+    });
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/logout`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.headers.get('Authorization')).toContain('Bearer');
+    req.flush({ message: 'ok' });
+  });
+
+  it('logout con error limpia sesión y retorna false', (done) => {
+    localStorage.setItem('sessionToken', 'jwt');
+
+    service.logout().subscribe((ok) => {
+      expect(ok).toBeFalse();
+      expect(routerNavigateSpy).toHaveBeenCalledWith(['/login']);
+      done();
+    });
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/logout`);
+    req.flush(
+      { detail: 'fail' },
+      { status: 500, statusText: 'Server Error' }
+    );
+  });
+
+  it('isLoggedIn devuelve true con token válido', () => {
+    const exp = Math.floor(Date.now() / 1000) + 3600;
+    const token = buildJwt({ exp });
+    sessionStorage.setItem('sessionToken', token);
+
+    expect(service.isLoggedIn()).toBeTrue();
+  });
+
+  it('isLoggedIn devuelve false si token tiene formato inválido', () => {
+    localStorage.setItem('sessionToken', 'token.malformado');
+
+    expect(service.isLoggedIn()).toBeFalse();
+    expect(localStorage.getItem('sessionToken')).toBeNull();
+  });
+
+  it('isLoggedIn devuelve false cuando no hay token', () => {
+    expect(service.isLoggedIn()).toBeFalse();
+  });
+
+  it('verifyResetToken retorna datos en éxito y flags en error', (done) => {
+    service.verifyResetToken('abc').subscribe((res) => {
+      expect(res.valid).toBeTrue();
+      done();
+    });
+    const ok = httpMock.expectOne(
+      `${environment.apiUrl}/password-reset/verify-token?token=abc`
+    );
+    expect(ok.request.method).toBe('POST');
+    ok.flush({ valid: true });
+
+    service.verifyResetToken('bad').subscribe((res) => {
+      expect(res.valid).toBeFalse();
+      expect(res.error).toContain('Token');
+    });
+    const err = httpMock.expectOne(
+      `${environment.apiUrl}/password-reset/verify-token?token=bad`
+    );
+    err.flush(
+      { detail: 'Token utilizado' },
+      { status: 400, statusText: 'Bad Request' }
+    );
+
+    service.verifyResetToken('expired').subscribe((res) => {
+      expect(res.expired).toBeTrue();
+      expect(res.used).toBeTrue();
+    });
+    const err2 = httpMock.expectOne(
+      `${environment.apiUrl}/password-reset/verify-token?token=expired`
+    );
+    err2.flush(
+      { detail: 'Token expirado y ya utilizado' },
+      { status: 400, statusText: 'Bad Request' }
+    );
+  });
+
+  it('resetPassword y resetPasswordForgotten hacen POST al endpoint esperado', () => {
+    service.resetPassword('tok', 'newPass').subscribe();
+    const req = httpMock.expectOne(
+      `${environment.apiUrl}/password-reset/confirm`
+    );
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body.token).toBe('tok');
+    req.flush({ message: 'ok' });
+
+    service.resetPasswordForgotten({
+      token: 't2',
+      new_password: 'n',
+      confirm_password: 'n',
+    }).subscribe();
+    const req2 = httpMock.expectOne(
+      `${environment.apiUrl}/forgot-password/confirm`
+    );
+    expect(req2.request.method).toBe('POST');
+    expect(req2.request.body.token).toBe('t2');
+    req2.flush({ message: 'ok' });
+  });
+
+  it('forgotPassword y passwordResetRequest hacen POST', () => {
+    service.forgotPassword('mail@test').subscribe();
+    const r1 = httpMock.expectOne(`${environment.apiUrl}/forgot-password`);
+    expect(r1.request.method).toBe('POST');
+    expect(r1.request.body.email).toBe('mail@test');
+    r1.flush({ message: 'ok' });
+
+    service.passwordResetRequest('mail@test').subscribe();
+    const r2 = httpMock.expectOne(`${environment.apiUrl}/forgot-password`);
+    expect(r2.request.method).toBe('POST');
+    expect(r2.request.body.email).toBe('mail@test');
+    r2.flush({ message: 'ok' });
+  });
+
+  it('cleanupResetTokensCache y getCacheStatus usan Authorization', () => {
+    localStorage.setItem('sessionToken', 'jwt');
+
+    service.cleanupResetTokensCache().subscribe();
+    const r1 = httpMock.expectOne(
+      `${environment.apiUrl}/password-reset/cleanup-cache`
+    );
+    expect(r1.request.headers.get('Authorization')).toContain('Bearer');
+    r1.flush({ ok: true });
+
+    service.getCacheStatus().subscribe();
+    const r2 = httpMock.expectOne(
+      `${environment.apiUrl}/password-reset/cache-status`
+    );
+    expect(r2.request.headers.get('Authorization')).toContain('Bearer');
+    r2.flush({ status: 'ok' });
+  });
+
+  it('resetPasswordSecure y resetPasswordSecureLoggedUser hacen POST', () => {
+    const data = {
+      token: 't',
+      current_password: 'old',
+      new_password: 'new',
+      confirm_password: 'new',
+    };
+
+    service.resetPasswordSecure(data).subscribe();
+    const r1 = httpMock.expectOne(
+      `${environment.apiUrl}/password-reset/confirm-secure`
+    );
+    expect(r1.request.method).toBe('POST');
+    expect(r1.request.body.token).toBe('t');
+    r1.flush({ message: 'ok' });
+
+    localStorage.setItem('sessionToken', 'jwt');
+    service.resetPasswordSecureLoggedUser(data).subscribe();
+    const r2 = httpMock.expectOne(
+      `${environment.apiUrl}/password-reset/confirm-secure`
+    );
+    expect(r2.request.headers.get('Authorization')).toContain('Bearer');
+    r2.flush({ message: 'ok' });
+  });
+
+  it('changePasswordRequest y changePasswordDirect usan token', () => {
+    localStorage.setItem('sessionToken', 'jwt');
+
+    service.changePasswordRequest().subscribe();
+    const r1 = httpMock.expectOne(
+      `${environment.apiUrl}/password-reset/request-logged-user`
+    );
+    expect(r1.request.method).toBe('POST');
+    r1.flush({ message: 'ok' });
+
+    const data = {
+      current_password: 'old',
+      new_password: 'new',
+      confirm_password: 'new',
+    };
+    service.changePasswordDirect(data).subscribe();
+    const r2 = httpMock.expectOne(
+      `${environment.apiUrl}/change-password-direct`
+    );
+    expect(r2.request.headers.get('Authorization')).toContain('Bearer');
+    expect(r2.request.body.current_password).toBe('old');
+    r2.flush({ ok: true });
   });
 });
