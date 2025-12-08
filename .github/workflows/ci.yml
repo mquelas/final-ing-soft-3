@@ -5,6 +5,11 @@ on:
     branches: [main]
   workflow_dispatch:
   workflow_call:
+    secrets:
+      SONAR_TOKEN:
+        required: false
+      GITHUB_TOKEN:
+        required: false
 
 permissions:
   contents: read
