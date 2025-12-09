@@ -182,7 +182,7 @@ def test_create_and_list_companies(admin_client):
             "cuil": 7777,
             "nombre": "Nueva",
             "rubro": "IT",
-            "cant_empleados": 10,
+            "cant_empleados": "hola",
             "fecha_ingreso": "2023-01-01",
             "horario_trabajo": "09-18",
             "estado": True,
