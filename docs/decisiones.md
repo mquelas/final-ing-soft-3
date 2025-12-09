@@ -95,3 +95,9 @@ gcloud run services update-traffic final-ing-3-api-prod-quelas-rivero \
 1. Capturar pantallas de Artifact Registry, Cloud Run QA/Prod y runs de GitHub Actions para adjuntarlas en la defensa.
 2. Completar README con URLs (`QA_API_URL`, `PROD_API_URL`) y pasos de despliegue.
 3. Mantener desactivado el “Automatic Analysis” en SonarCloud para que el job `sonarcloud` sea la única fuente de verdad.
+
+### Decisiones sobre pruebas unitarias (preguntas tipicas)
+- Frameworks elegidos: Front usa Jasmine/Karma porque viene integrado en Angular 17, tiene soporte estable en GitHub Actions y genera `lcov.info` para Sonar; Back usa Pytest por fixtures flexibles, plugins de coverage y marcado (`-m "not integration"`), y porque permite Sqlite en memoria sin dependencias externas.
+- Mock vs real: Se mockean integraciones externas (HTTP, correo, storage) y DB en unitarias backend mediante fixtures Sqlite/transactions; en frontend se mockea `HttpClient` y servicios de routing. Se usan implementaciones reales para logica pura (validaciones, transformaciones, componentes UI sin estado) y para repositorios en integracion marcada.
+- Validacion de logica: coverage con umbral 70% rompe el build; revisamos ramas criticas (errores/edge cases) y tenemos tests de contrato/E2E para flujos principales. En front se validan outputs del template y eventos; en back se validan invariantes de dominio y respuestas HTTP con `TestClient`.
+- Manejo de estado/datos externos: fixtures limpian estado entre tests (rollback transaccional en Pytest, `TestBed.resetTestingModule()` en Angular); datos externos se stubbean y se generan factories/datos semilla deterministas; en integracion se usan entornos efimeros (`docker-compose.dev.yml`) y datos de prueba cargados antes del test, nunca datos productivos.
